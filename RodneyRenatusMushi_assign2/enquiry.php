@@ -1,35 +1,7 @@
-<?php
-require_once "data_helper.php";
-$site_name = "Cacti-Succulent Kuching";
+﻿<?php
+session_start();
+$site_name    = "Cacti-Succulent Kuching";
 $current_year = 2026;
-
-// Check if the form was submitted
-$submitted = false;
-$fname = "";
-$lname = "";
-$email = "";
-$phone = "";
-$enquiry_type = "";
-$comments = "";
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $submitted = true;
-    $fname        = htmlspecialchars($_POST["fname"]);
-    $lname        = htmlspecialchars($_POST["lname"]);
-    $email        = htmlspecialchars($_POST["user-email"]);
-    $phone        = htmlspecialchars($_POST["phone"]);
-    $enquiry_type = htmlspecialchars($_POST["enquiry-type"]);
-    $comments     = htmlspecialchars($_POST["comments"]);
-
-    save_submission("enquiries.json", [
-        "fname"        => $fname,
-        "lname"        => $lname,
-        "email"        => $email,
-        "phone"        => $phone,
-        "enquiry_type" => $enquiry_type,
-        "comments"     => $comments,
-    ]);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -43,6 +15,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
+
+<?php include('connection.php'); ?>
+<?php include('createtable.php'); ?>
 
   <div id="top"></div>
 
@@ -64,10 +39,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       </div>
       <a href="order.php">Order</a>
       <a href="registration.php">Register</a>
-      <a href="login.php">Login</a>
+      <?php if (isset($_SESSION['role'])): ?><a href="logout.php">Logout</a><?php else: ?><a href="login.php">Login</a><?php endif; ?>
       <a href="enquiry.php" class="active">Enquiry</a>
       <a href="members.php">Members</a>
-      <a href="dashboard.php">Dashboard</a>
+      <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?><a href="dashboard.php">Dashboard</a><?php endif; ?>
     </nav>
   </header>
 
@@ -80,27 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="form-page-wrap">
 
-      <?php if ($submitted): ?>
-
-        <!-- Confirmation shown after form is submitted -->
-        <div class="success-box">
-          <h2>Thank you, <?php echo $fname . " " . $lname; ?>!</h2>
-          <p>We have received your enquiry and will get back to you shortly.</p>
-          <table class="confirm-table">
-            <tr><th>Name</th><td><?php echo $fname . " " . $lname; ?></td></tr>
-            <tr><th>Email</th><td><?php echo $email; ?></td></tr>
-            <tr><th>Phone</th><td><?php echo $phone; ?></td></tr>
-            <tr><th>Topic</th><td><?php echo $enquiry_type; ?></td></tr>
-            <?php if ($comments != ""): ?>
-            <tr><th>Comments</th><td><?php echo $comments; ?></td></tr>
-            <?php endif; ?>
-          </table>
-          <a href="enquiry.php" class="btn-submit" style="display:inline-block;margin-top:1rem;">Send Another Enquiry</a>
-        </div>
-
-      <?php else: ?>
-
-        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+        <form action="enquiry_process.php" method="post">
 
           <div class="form-group">
             <label for="fname">First Name <span class="required-star">*</span></label>
@@ -168,8 +123,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
           </div>
 
         </form>
-
-      <?php endif; ?>
 
     </div>
   </main>

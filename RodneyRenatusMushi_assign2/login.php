@@ -1,13 +1,39 @@
-<?php
-$site_name = "Cacti-Succulent Kuching";
+﻿<?php
+session_start();
+
+$site_name    = "Cacti-Succulent Kuching";
 $current_year = 2026;
+$error        = "";
 
-$submitted = false;
-$username  = "";
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $input_user = trim($_POST["username"] ?? "");
+    $input_pass = trim($_POST["password"] ?? "");
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $submitted = true;
-    $username  = htmlspecialchars($_POST["username"]);
+    if (empty($input_user) || empty($input_pass)) {
+        $error = "Please enter both username and password.";
+    } else {
+        $conn = mysqli_connect("localhost", "root", "", "cacti_succulent");
+
+        if (!$conn) {
+            $error = "Database connection failed. Please try again later.";
+        } else {
+            $sql    = "SELECT * FROM `user` WHERE username = '$input_user' AND password = '$input_pass'";
+            $result = mysqli_query($conn, $sql);
+
+            if (mysqli_num_rows($result) === 1) {
+                $row = mysqli_fetch_assoc($result);
+                $_SESSION['role']     = $row['role'];
+                $_SESSION['username'] = $row['username'];
+                $_SESSION['name']     = $row['fname'] . ' ' . $row['lname'];
+                mysqli_close($conn);
+                header("Location: " . ($row['role'] === 'admin' ? "dashboard.php" : "index.php"));
+                exit;
+            }
+
+            $error = "Invalid username or password. Please try again.";
+            mysqli_close($conn);
+        }
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -41,10 +67,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       </div>
       <a href="order.php">Order</a>
       <a href="registration.php">Register</a>
-      <a href="login.php" class="active">Login</a>
+      <?php if (isset($_SESSION['role'])): ?><a href="logout.php" class="active">Logout</a><?php else: ?><a href="login.php" class="active">Login</a><?php endif; ?>
       <a href="enquiry.php">Enquiry</a>
       <a href="members.php">Members</a>
-      <a href="dashboard.php">Dashboard</a>
     </nav>
   </header>
 
@@ -63,50 +88,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       </div>
 
       <div class="login-form-side">
+        
+      <?php if ($submitted): ?>
 
-        <?php if ($submitted): ?>
+        <div class="success-box">
+          <h2>Hello, <?php echo $username; ?>!</h2>
+          <p>You have successfully signed in to <?php echo $site_name; ?>.</p>
+          <a href="index.php" class="btn-submit" style="display:inline-block;margin-top:1rem;">Go to Home</a>
+        </div>
 
-          <div class="success-box">
-            <h2>Hello, <?php echo $username; ?>!</h2>
-            <p>You have successfully signed in to <?php echo $site_name; ?>.</p>
-            <a href="index.php" class="btn-submit" style="display:inline-block;margin-top:1rem;">Go to Home</a>
+      <?php else: ?>
+
+
+
+        <h1>Member Login</h1>
+        <p class="subtitle">Sign in to your <?php echo $site_name; ?> account.</p>
+
+        <?php if ($error != ""): ?>
+          <div style="background:#fff0f0;border:2px solid #c0392b;border-radius:6px;padding:0.8rem 1rem;margin-bottom:1rem;">
+            <p style="color:#c0392b;margin:0;"><?php echo $error; ?></p>
           </div>
-
-        <?php else: ?>
-
-          <h1>Member Login</h1>
-          <p class="subtitle">Sign in to your <?php echo $site_name; ?> account.</p>
-
-          <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
-            <fieldset>
-              <legend>Login Credentials</legend>
-              <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username" name="username"
-                       placeholder="Enter username" maxlength="10"
-                       pattern="[a-zA-Z]+" title="Alphabetical only, max 10"
-                       autocomplete="username" required>
-              </div>
-              <div class="form-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" name="password"
-                       placeholder="Enter password" maxlength="25"
-                       pattern="[a-zA-Z]+" title="Alphabetical only, max 25"
-                       autocomplete="current-password" required>
-              </div>
-            </fieldset>
-            <a href="#" class="forgot">Forgot password?</a>
-            <button type="submit" class="btn-submit login-btn">Sign In</button>
-          </form>
-
-          <div class="divider">or continue with</div>
-          <div class="social-row">
-            <button class="btn-social"><span class="brand-dot brand-google"></span> Google</button>
-            <button class="btn-social"><span class="brand-dot brand-microsoft"></span> Microsoft</button>
-          </div>
-          <p class="login-switch">New here? <a href="registration.php">Create an account</a></p>
-
         <?php endif; ?>
+
+        <form action="login.php" method="post">
+          <fieldset>
+            <legend>Login Credentials</legend>
+            <div class="form-group">
+              <label for="username">Username</label>
+              <input type="text" id="username" name="username"
+                     placeholder="Enter username" maxlength="50"
+                     autocomplete="username" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password"
+                     placeholder="Enter password" maxlength="50"
+                     autocomplete="current-password" required>
+            </div>
+          </fieldset>
+          <button type="submit" class="btn-submit login-btn">Sign In</button>
+        </form>
+
+        <p class="login-switch">New here? <a href="registration.php">Create an account</a></p>
 
       </div>
 

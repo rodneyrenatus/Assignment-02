@@ -1,23 +1,42 @@
-<?php
-require_once "data_helper.php";
+﻿<?php
+session_start();
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
+    header("Location: login.php");
+    exit;
+}
+
 $site_name    = "Cacti-Succulent Kuching";
 $current_year = 2026;
 
-$enquiries     = load_submissions("enquiries.json");
-$registrations = load_submissions("registrations.json");
-$orders        = load_submissions("orders.json");
-
-$total_enquiries     = count($enquiries);
-$total_registrations = count($registrations);
-$total_orders        = count($orders);
-
-// Calculate total revenue from all orders
-$total_revenue = 0.00;
-foreach ($orders as $order) {
-    $total_revenue = $total_revenue + $order["grand_total"];
+$conn = mysqli_connect("localhost", "root", "", "cacti_succulent");
+if (!$conn) {
+    die("Database connection failed: " . mysqli_connect_error());
 }
 
-// Determine which tab to show (default: enquiries)
+// Summary counts
+$res_enq  = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM enquiry");
+$res_usr  = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM `user`");
+$res_ord  = mysqli_query($conn, "SELECT COUNT(*) AS cnt FROM orders");
+$res_rev  = mysqli_query($conn, "SELECT SUM(grand_total) AS total FROM orders");
+
+$total_enquiries     = (int)mysqli_fetch_assoc($res_enq)['cnt'];
+$total_registrations = (int)mysqli_fetch_assoc($res_usr)['cnt'];
+$total_orders        = (int)mysqli_fetch_assoc($res_ord)['cnt'];
+$revenue_row         = mysqli_fetch_assoc($res_rev);
+$total_revenue       = $revenue_row['total'] !== null ? (float)$revenue_row['total'] : 0.00;
+
+// Recent enquiries (last 5)
+$recent_enq = mysqli_query($conn, "SELECT * FROM enquiry ORDER BY id DESC LIMIT 5");
+
+// Recent registrations (last 5)
+$recent_usr = mysqli_query($conn, "SELECT * FROM `user` ORDER BY id DESC LIMIT 5");
+
+// Recent orders (last 5)
+$recent_ord = mysqli_query($conn, "SELECT * FROM orders ORDER BY id DESC LIMIT 5");
+
+mysqli_close($conn);
+
 $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries";
 ?>
 <!DOCTYPE html>
@@ -25,7 +44,7 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dashboard | <?php echo $site_name; ?></title>
+  <title>Admin Dashboard | <?php echo $site_name; ?></title>
   <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
@@ -50,18 +69,21 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
       </div>
       <a href="order.php">Order</a>
       <a href="registration.php">Register</a>
-      <a href="login.php">Login</a>
+      <?php if (isset($_SESSION['role'])): ?><a href="logout.php">Logout</a><?php else: ?><a href="login.php">Login</a><?php endif; ?>
       <a href="enquiry.php">Enquiry</a>
       <a href="members.php">Members</a>
-      <a href="dashboard.php" class="active">Dashboard</a>
+      <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?><a href="dashboard.php" class="active">Dashboard</a><?php endif; ?>
     </nav>
   </header>
 
   <main>
 
-    <div class="page-hero">
-      <h1>Admin Dashboard</h1>
-      <p>Overview of all form submissions received on the site.</p>
+    <div class="page-hero" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>Logged in as <strong><?php echo htmlspecialchars($_SESSION['username']); ?></strong> &mdash; Overview of all database submissions.</p>
+      </div>
+      <a href="logout.php" class="btn-reset" style="display:inline-block;text-decoration:none;padding:0.5rem 1.2rem;">Log Out</a>
     </div>
 
     <!-- Summary cards -->
@@ -78,7 +100,7 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
       <div class="dash-card dash-card-green">
         <div class="dash-card-icon">📋</div>
         <div class="dash-card-body">
-          <span class="dash-card-label">Registrations</span>
+          <span class="dash-card-label">Registered Users</span>
           <span class="dash-card-number"><?php echo $total_registrations; ?></span>
         </div>
       </div>
@@ -104,24 +126,24 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
     <!-- Tab navigation -->
     <div class="dash-tabs">
       <a href="dashboard.php?tab=enquiries"
-         class="dash-tab <?php echo $active_tab == "enquiries" ? "dash-tab-active" : ""; ?>">
+         class="dash-tab <?php echo $active_tab === "enquiries" ? "dash-tab-active" : ""; ?>">
         Enquiries (<?php echo $total_enquiries; ?>)
       </a>
       <a href="dashboard.php?tab=registrations"
-         class="dash-tab <?php echo $active_tab == "registrations" ? "dash-tab-active" : ""; ?>">
+         class="dash-tab <?php echo $active_tab === "registrations" ? "dash-tab-active" : ""; ?>">
         Registrations (<?php echo $total_registrations; ?>)
       </a>
       <a href="dashboard.php?tab=orders"
-         class="dash-tab <?php echo $active_tab == "orders" ? "dash-tab-active" : ""; ?>">
+         class="dash-tab <?php echo $active_tab === "orders" ? "dash-tab-active" : ""; ?>">
         Orders (<?php echo $total_orders; ?>)
       </a>
     </div>
 
-    <!-- Enquiries table -->
-    <?php if ($active_tab == "enquiries"): ?>
+    <!-- Recent Enquiries -->
+    <?php if ($active_tab === "enquiries"): ?>
     <div class="dash-section">
-      <h2>Enquiry Submissions</h2>
-      <?php if ($total_enquiries == 0): ?>
+      <h2>Recent Enquiries <span style="font-size:0.85rem;font-weight:normal;">(showing latest 5 &mdash; <a href="view_enquiry.php">view all</a>)</span></h2>
+      <?php if ($total_enquiries === 0): ?>
         <p class="dash-empty">No enquiries received yet.</p>
       <?php else: ?>
         <div class="dash-table-wrap">
@@ -134,27 +156,19 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
                 <th>Phone</th>
                 <th>Topic</th>
                 <th>Comments</th>
-                <th>Received</th>
               </tr>
             </thead>
             <tbody>
-              <?php
-              $row_number = 1;
-              foreach ($enquiries as $row):
-              ?>
+              <?php while ($row = mysqli_fetch_assoc($recent_enq)): ?>
               <tr>
-                <td><?php echo $row_number; ?></td>
+                <td><?php echo $row["id"]; ?></td>
                 <td><?php echo $row["fname"] . " " . $row["lname"]; ?></td>
                 <td><?php echo $row["email"]; ?></td>
                 <td><?php echo $row["phone"]; ?></td>
                 <td><?php echo $row["enquiry_type"]; ?></td>
                 <td><?php echo $row["comments"] != "" ? $row["comments"] : "—"; ?></td>
-                <td><?php echo $row["timestamp"]; ?></td>
               </tr>
-              <?php
-              $row_number = $row_number + 1;
-              endforeach;
-              ?>
+              <?php endwhile; ?>
             </tbody>
           </table>
         </div>
@@ -162,11 +176,11 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
     </div>
     <?php endif; ?>
 
-    <!-- Registrations table -->
-    <?php if ($active_tab == "registrations"): ?>
+    <!-- Recent Registrations -->
+    <?php if ($active_tab === "registrations"): ?>
     <div class="dash-section">
-      <h2>Registration Submissions</h2>
-      <?php if ($total_registrations == 0): ?>
+      <h2>Recent Registrations <span style="font-size:0.85rem;font-weight:normal;">(showing latest 5 &mdash; <a href="view_register.php">view all</a>)</span></h2>
+      <?php if ($total_registrations === 0): ?>
         <p class="dash-empty">No registrations received yet.</p>
       <?php else: ?>
         <div class="dash-table-wrap">
@@ -177,31 +191,23 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
                 <th>Name</th>
                 <th>Email</th>
                 <th>Phone</th>
+                <th>Username</th>
                 <th>City</th>
                 <th>State</th>
-                <th>Postcode</th>
-                <th>Received</th>
               </tr>
             </thead>
             <tbody>
-              <?php
-              $row_number = 1;
-              foreach ($registrations as $row):
-              ?>
+              <?php while ($row = mysqli_fetch_assoc($recent_usr)): ?>
               <tr>
-                <td><?php echo $row_number; ?></td>
+                <td><?php echo $row["id"]; ?></td>
                 <td><?php echo $row["fname"] . " " . $row["lname"]; ?></td>
                 <td><?php echo $row["email"]; ?></td>
                 <td><?php echo $row["phone"]; ?></td>
+                <td><?php echo $row["username"]; ?></td>
                 <td><?php echo $row["city"]; ?></td>
                 <td><?php echo $row["state"]; ?></td>
-                <td><?php echo $row["postcode"]; ?></td>
-                <td><?php echo $row["timestamp"]; ?></td>
               </tr>
-              <?php
-              $row_number = $row_number + 1;
-              endforeach;
-              ?>
+              <?php endwhile; ?>
             </tbody>
           </table>
         </div>
@@ -209,11 +215,11 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
     </div>
     <?php endif; ?>
 
-    <!-- Orders table -->
-    <?php if ($active_tab == "orders"): ?>
+    <!-- Recent Orders -->
+    <?php if ($active_tab === "orders"): ?>
     <div class="dash-section">
-      <h2>Order Submissions</h2>
-      <?php if ($total_orders == 0): ?>
+      <h2>Recent Orders <span style="font-size:0.85rem;font-weight:normal;">(showing latest 5 &mdash; <a href="view_order.php">view all</a>)</span></h2>
+      <?php if ($total_orders === 0): ?>
         <p class="dash-empty">No orders received yet.</p>
       <?php else: ?>
         <div class="dash-table-wrap">
@@ -223,42 +229,24 @@ $active_tab = isset($_GET["tab"]) ? htmlspecialchars($_GET["tab"]) : "enquiries"
                 <th>#</th>
                 <th>Name</th>
                 <th>Email</th>
-                <th>Phone</th>
-                <th>Items</th>
                 <th>Delivery</th>
                 <th>Date</th>
                 <th>Payment</th>
                 <th>Total (RM)</th>
-                <th>Received</th>
               </tr>
             </thead>
             <tbody>
-              <?php
-              $row_number = 1;
-              foreach ($orders as $row):
-                // Build a readable items list
-                $items_list = "";
-                foreach ($row["items"] as $item) {
-                    $items_list = $items_list . $item["name"] . " x" . $item["qty"] . ", ";
-                }
-                $items_list = rtrim($items_list, ", ");
-              ?>
+              <?php while ($row = mysqli_fetch_assoc($recent_ord)): ?>
               <tr>
-                <td><?php echo $row_number; ?></td>
+                <td><?php echo $row["id"]; ?></td>
                 <td><?php echo $row["fname"] . " " . $row["lname"]; ?></td>
                 <td><?php echo $row["email"]; ?></td>
-                <td><?php echo $row["phone"]; ?></td>
-                <td class="items-cell"><?php echo $items_list != "" ? $items_list : "—"; ?></td>
                 <td><?php echo $row["delivery_mode"]; ?></td>
                 <td><?php echo $row["preferred_date"]; ?></td>
                 <td><?php echo $row["payment_mode"]; ?></td>
-                <td><strong><?php echo number_format($row["grand_total"], 2); ?></strong></td>
-                <td><?php echo $row["timestamp"]; ?></td>
+                <td><strong><?php echo number_format((float)$row["grand_total"], 2); ?></strong></td>
               </tr>
-              <?php
-              $row_number = $row_number + 1;
-              endforeach;
-              ?>
+              <?php endwhile; ?>
             </tbody>
           </table>
         </div>

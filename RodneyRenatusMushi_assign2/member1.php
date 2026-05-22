@@ -1,4 +1,5 @@
-<?php
+﻿<?php
+session_start();
 $site_name = "Cacti-Succulent Kuching";
 $current_year = 2026;
 ?>
@@ -35,10 +36,10 @@ $current_year = 2026;
       </div>
       <a href="order.php">Order</a>
       <a href="registration.php">Register</a>
-      <a href="login.php">Login</a>
+      <?php if (isset($_SESSION['role'])): ?><a href="logout.php">Logout</a><?php else: ?><a href="login.php">Login</a><?php endif; ?>
       <a href="enquiry.php">Enquiry</a>
       <a href="members.php" class="active">Members</a>
-      <a href="dashboard.php">Dashboard</a>
+      <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?><a href="dashboard.php">Dashboard</a><?php endif; ?>
     </nav>
   </header>
 

@@ -1,41 +1,7 @@
-<?php
-require_once "data_helper.php";
-$site_name = "Cacti-Succulent Kuching";
+﻿<?php
+session_start();
+$site_name    = "Cacti-Succulent Kuching";
 $current_year = 2026;
-
-$submitted = false;
-$fname    = "";
-$lname    = "";
-$email    = "";
-$street   = "";
-$city     = "";
-$state    = "";
-$postcode = "";
-$phone    = "";
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $submitted = true;
-    $fname    = htmlspecialchars($_POST["fname"]);
-    $lname    = htmlspecialchars($_POST["lname"]);
-    $email    = htmlspecialchars($_POST["user-email"]);
-    $street   = htmlspecialchars($_POST["street"]);
-    $city     = htmlspecialchars($_POST["city"]);
-    $state    = htmlspecialchars($_POST["state"]);
-    $postcode = htmlspecialchars($_POST["postcode"]);
-    $phone    = htmlspecialchars($_POST["phone"]);
-    $full_address = $street . ", " . $city . ", " . $state . " " . $postcode;
-
-    save_submission("registrations.json", [
-        "fname"    => $fname,
-        "lname"    => $lname,
-        "email"    => $email,
-        "phone"    => $phone,
-        "street"   => $street,
-        "city"     => $city,
-        "state"    => $state,
-        "postcode" => $postcode,
-    ]);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -49,6 +15,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
+
+<?php include('connection.php'); ?>
+<?php include('createtable.php'); ?>
 
   <div id="top"></div>
 
@@ -70,10 +39,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       </div>
       <a href="order.php">Order</a>
       <a href="registration.php" class="active">Register</a>
-      <a href="login.php">Login</a>
+      <?php if (isset($_SESSION['role'])): ?><a href="logout.php">Logout</a><?php else: ?><a href="login.php">Login</a><?php endif; ?>
       <a href="enquiry.php">Enquiry</a>
       <a href="members.php">Members</a>
-      <a href="dashboard.php">Dashboard</a>
+      <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?><a href="dashboard.php">Dashboard</a><?php endif; ?>
     </nav>
   </header>
 
@@ -86,23 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="form-page-wrap">
 
-      <?php if ($submitted): ?>
-
-        <div class="success-box">
-          <h2>Welcome, <?php echo $fname . " " . $lname; ?>!</h2>
-          <p>Your account has been created successfully. Here are your registration details:</p>
-          <table class="confirm-table">
-            <tr><th>Name</th><td><?php echo $fname . " " . $lname; ?></td></tr>
-            <tr><th>Email</th><td><?php echo $email; ?></td></tr>
-            <tr><th>Phone</th><td><?php echo $phone; ?></td></tr>
-            <tr><th>Address</th><td><?php echo $full_address; ?></td></tr>
-          </table>
-          <a href="login.php" class="btn-submit" style="display:inline-block;margin-top:1rem;">Go to Login</a>
-        </div>
-
-      <?php else: ?>
-
-        <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+        <form action="register_process.php" method="post">
 
           <div class="form-group">
             <label for="fname">First Name <span class="required-star">*</span></label>
@@ -178,14 +131,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                    title="8 to 10 digits only" required>
           </div>
 
+          <fieldset>
+            <legend>Login Credentials</legend>
+
+            <div class="form-group">
+              <label for="username">Username <span class="required-star">*</span></label>
+              <input type="text" id="username" name="username"
+                     placeholder="Choose a username"
+                     maxlength="25" pattern="[a-zA-Z0-9]+"
+                     title="Letters and numbers only, max 25" required>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password <span class="required-star">*</span></label>
+              <input type="password" id="password" name="password"
+                     placeholder="Choose a password"
+                     maxlength="25" required>
+            </div>
+          </fieldset>
+
           <div class="form-actions">
             <button type="submit" class="btn-submit">Create Account</button>
             <button type="reset" class="btn-reset">Clear Form</button>
           </div>
 
         </form>
-
-      <?php endif; ?>
 
     </div>
   </main>

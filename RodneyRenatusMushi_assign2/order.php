@@ -1,125 +1,7 @@
-<?php
-require_once "data_helper.php";
-$site_name = "Cacti-Succulent Kuching";
+﻿<?php
+session_start();
+$site_name    = "Cacti-Succulent Kuching";
 $current_year = 2026;
-
-$submitted = false;
-$fname          = "";
-$lname          = "";
-$email          = "";
-$phone          = "";
-$delivery_mode  = "";
-$preferred_date = "";
-$delivery_address = "";
-$payment_mode   = "";
-$special_notes  = "";
-
-// Product prices (used to calculate total)
-$prices = [
-    "ariocarpus"      => 29.10,
-    "golden_barrel"   => 35.00,
-    "bunny_ear"       => 28.00,
-    "moon_cactus"     => 22.00,
-    "fairy_castle"    => 40.00,
-    "old_lady"        => 30.00,
-    "star_cactus"     => 38.00,
-    "hedgehog"        => 33.00,
-    "bishops_cap"     => 42.00,
-    "mini_saguaro"    => 50.00,
-    "aloe"            => 10.00,
-    "sedum"           => 9.00,
-    "echeveria_raspberry" => 25.00,
-    "jade"            => 30.00,
-    "lithops"         => 22.00,
-    "string_pearls"   => 28.00,
-    "burros_tail"     => 35.00,
-    "haworthia_lim"   => 26.00,
-    "mini_echeveria"  => 15.00,
-    "terra_s"         => 5.00,
-    "terra_l"         => 12.00,
-    "ceramic"         => 18.00,
-    "hanging"         => 22.00,
-    "ceramic_white"   => 14.00,
-    "terra_m"         => 10.00,
-    "hanging_plastic" => 13.00,
-    "concrete"        => 30.00,
-    "plastic"         => 8.00,
-    "self_water"      => 43.00,
-    "mini_deco"       => 20.00,
-    "glass_terr"      => 60.00,
-    "wooden_box"      => 54.00,
-    "soil"            => 15.00,
-    "fert"            => 12.00,
-    "gift"            => 35.00,
-    "watering_small"  => 6.00,
-    "tool_set"        => 20.00,
-    "spray"           => 4.00,
-    "labels"          => 7.00,
-    "grow_light"      => 56.00,
-    "pebbles"         => 21.00,
-    "stand"           => 25.00,
-];
-
-$delivery_fees = [
-    "pickup"            => 0.00,
-    "delivery_kuching"  => 5.00,
-    "delivery_sarawak"  => 15.00,
-    "courier"           => 25.00,
-];
-
-$ordered_items = [];
-$subtotal = 0.00;
-
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $submitted = true;
-    $fname          = htmlspecialchars($_POST["first_name"]);
-    $lname          = htmlspecialchars($_POST["last_name"]);
-    $email          = htmlspecialchars($_POST["email"]);
-    $phone          = htmlspecialchars($_POST["phone"]);
-    $delivery_mode  = htmlspecialchars($_POST["delivery_mode"]);
-    $preferred_date = htmlspecialchars($_POST["preferred_date"]);
-    $delivery_address = isset($_POST["delivery_address"]) ? htmlspecialchars($_POST["delivery_address"]) : "";
-    $payment_mode   = htmlspecialchars($_POST["payment_mode"]);
-    $special_notes  = isset($_POST["special_notes"]) ? htmlspecialchars($_POST["special_notes"]) : "";
-
-    // Collect chosen products and quantities
-    foreach ($prices as $key => $unit_price) {
-        $checkbox_name = "product_" . $key;
-        $qty_name = "qty_" . $key;
-        if (isset($_POST[$checkbox_name]) && isset($_POST[$qty_name])) {
-            $qty = (int)$_POST[$qty_name];
-            if ($qty > 0) {
-                $line_total = $qty * $unit_price;
-                $subtotal = $subtotal + $line_total;
-                $ordered_items[] = [
-                    "name"  => htmlspecialchars($_POST[$checkbox_name]),
-                    "qty"   => $qty,
-                    "price" => $unit_price,
-                    "total" => $line_total,
-                ];
-            }
-        }
-    }
-
-    $delivery_fee = isset($delivery_fees[$delivery_mode]) ? $delivery_fees[$delivery_mode] : 0.00;
-    $grand_total  = $subtotal + $delivery_fee;
-
-    save_submission("orders.json", [
-        "fname"            => $fname,
-        "lname"            => $lname,
-        "email"            => $email,
-        "phone"            => $phone,
-        "delivery_mode"    => $delivery_mode,
-        "preferred_date"   => $preferred_date,
-        "delivery_address" => $delivery_address,
-        "payment_mode"     => $payment_mode,
-        "special_notes"    => $special_notes,
-        "items"            => $ordered_items,
-        "subtotal"         => $subtotal,
-        "delivery_fee"     => $delivery_fee,
-        "grand_total"      => $grand_total,
-    ]);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -133,6 +15,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   <link rel="stylesheet" href="styles/style.css">
 </head>
 <body>
+
+<?php include('connection.php'); ?>
+<?php include('createtable.php'); ?>
 
   <div id="top"></div>
 
@@ -154,10 +39,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       </div>
       <a href="order.php" class="active">Order</a>
       <a href="registration.php">Register</a>
-      <a href="login.php">Login</a>
+      <?php if (isset($_SESSION['role'])): ?><a href="logout.php">Logout</a><?php else: ?><a href="login.php">Login</a><?php endif; ?>
       <a href="enquiry.php">Enquiry</a>
       <a href="members.php">Members</a>
-      <a href="dashboard.php">Dashboard</a>
+      <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?><a href="dashboard.php">Dashboard</a><?php endif; ?>
     </nav>
   </header>
 
@@ -168,53 +53,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       <p>Bring the beauty of the desert home. Fill in the form below and we will prepare
          your order with care. Fields marked <span class="required-star">*</span> are required.</p>
     </div>
-
-    <?php if ($submitted): ?>
-
-      <!-- Order confirmation -->
-      <div class="form-page-wrap">
-        <div class="success-box">
-          <h2>Order Received, <?php echo $fname . " " . $lname; ?>!</h2>
-          <p>Thank you for your order. We will contact you at <strong><?php echo $email; ?></strong> to confirm.</p>
-
-          <table class="confirm-table">
-            <tr><th>Name</th><td><?php echo $fname . " " . $lname; ?></td></tr>
-            <tr><th>Phone</th><td><?php echo $phone; ?></td></tr>
-            <tr><th>Delivery</th><td><?php echo $delivery_mode; ?></td></tr>
-            <tr><th>Preferred Date</th><td><?php echo $preferred_date; ?></td></tr>
-            <?php if ($delivery_address != ""): ?>
-            <tr><th>Address</th><td><?php echo $delivery_address; ?></td></tr>
-            <?php endif; ?>
-            <tr><th>Payment</th><td><?php echo $payment_mode; ?></td></tr>
-          </table>
-
-          <?php if (count($ordered_items) > 0): ?>
-          <h3 style="margin-top:1.5rem;">Items Ordered</h3>
-          <table class="confirm-table">
-            <tr><th>Product</th><th>Qty</th><th>Unit (RM)</th><th>Total (RM)</th></tr>
-            <?php foreach ($ordered_items as $item): ?>
-            <tr>
-              <td><?php echo $item["name"]; ?></td>
-              <td><?php echo $item["qty"]; ?></td>
-              <td><?php echo number_format($item["price"], 2); ?></td>
-              <td><?php echo number_format($item["total"], 2); ?></td>
-            </tr>
-            <?php endforeach; ?>
-            <tr><th colspan="3">Subtotal</th><td>RM <?php echo number_format($subtotal, 2); ?></td></tr>
-            <tr><th colspan="3">Delivery Fee</th><td>RM <?php echo number_format($delivery_fee, 2); ?></td></tr>
-            <tr><th colspan="3">Grand Total</th><td><strong>RM <?php echo number_format($grand_total, 2); ?></strong></td></tr>
-          </table>
-          <?php endif; ?>
-
-          <?php if ($special_notes != ""): ?>
-          <p><strong>Notes:</strong> <?php echo $special_notes; ?></p>
-          <?php endif; ?>
-
-          <a href="order.php" class="btn-submit" style="display:inline-block;margin-top:1.5rem;">Place Another Order</a>
-        </div>
-      </div>
-
-    <?php else: ?>
 
     <div class="order-form-area content-clearfix">
 
@@ -235,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <p>📦 Orders processed within 1–2 business days.</p>
       </aside>
 
-      <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="post">
+      <form action="order_process.php" method="post">
 
         <!-- Personal Details -->
         <fieldset>
@@ -575,8 +413,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
       </form>
 
     </div><!-- /.order-form-area -->
-
-    <?php endif; ?>
 
   </main>
 

@@ -67,7 +67,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       </div>
       <a href="order.php">Order</a>
       <a href="registration.php">Register</a>
-      <?php if (isset($_SESSION['role'])): ?><a href="logout.php" class="active">Logout</a><?php else: ?><a href="login.php" class="active">Login</a><?php endif; ?>
+      <?php if (isset($_SESSION['role'])): ?>
+        <a href="logout.php" class="active">Logout</a>
+      <?php else: ?>
+        <a href="login.php" class="active">Login</a>
+      <?php endif; ?>
       <a href="enquiry.php">Enquiry</a>
       <a href="members.php">Members</a>
     </nav>
@@ -88,18 +92,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
       </div>
 
       <div class="login-form-side">
-        
-      <?php if ($submitted): ?>
-
-        <div class="success-box">
-          <h2>Hello, <?php echo $username; ?>!</h2>
-          <p>You have successfully signed in to <?php echo $site_name; ?>.</p>
-          <a href="index.php" class="btn-submit" style="display:inline-block;margin-top:1rem;">Go to Home</a>
-        </div>
-
-      <?php else: ?>
-
-
 
         <h1>Member Login</h1>
         <p class="subtitle">Sign in to your <?php echo $site_name; ?> account.</p>
